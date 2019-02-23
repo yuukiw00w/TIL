@@ -1,2 +1,2 @@
 # TIL
-today I learned
+This repository is my TIL
