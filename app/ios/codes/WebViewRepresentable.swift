@@ -1,6 +1,7 @@
 import SwiftUI
 
 @MainActor struct WebViewHolder {
+    // createは生成用のextension。普通にinitでも可
     let webView = WKWebView.create()
     
     func loadURLRequest(_ request: URLRequest) {
