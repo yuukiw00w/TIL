@@ -1,0 +1,89 @@
+【概要】
+元々CocoaPodsを使ってライブラリ管理し、コードは全てxcodeprojのtarget一つで管理していたプロジェクトのソースコードとライブラリの管理をSwift PMに移行する
+
+【対応手順1 - ビルドできるようになるまで】
+1. File＞New＞Packageからxcworkspaceに紐付ける形で管理する諸々を入れるSwift Packageの箱を作る
+2. CocoaPodsから依存ライブラリを基本全て削除する（SwiftFormat, SwiftLint, LicensePlistは残す）
+3. entrypointになる部分だけ残してそれ以外のコードとアセットをほとんどPackageに移動する（具体的にはAppDelegate/SceneDelegateやGoogleService-info、info.plist、AppIcon、LaunchScreen.storyboardなどを残す）
+4. Package.swiftを書き換えて必要なライブラリの追加処理を行う
+5. SwiftGenはSwiftGenPluginに置き換えてymlファイルの位置移動や修正を行う
+6. AppDelegateの中身をPackageに移動してなるべくPackage管理に寄せる
+7. SwiftFormat/SwiftLint/LicensePlistの調整を行う
+8. アセットの参照先を変更する（具体的にはbundle指定を.moduleにする）
+9. xib/storyboardの参照先moduleもPackageのものに変更する
+10. リンクは切れてるけど不要だったファイルがあれば削除する
+11. importしているモジュール名を適切なものに修正
+12. 必要に応じてPackageのREADME.mdを修正する
+13. testコードのimportを修正する
+14. CIツールからのビルド時に-skipPackagePluginValidationをつけるようにする
+
+【対応手順2 - ビルドツールの整理】
+1. File＞New＞Packageからxcworkspaceに紐付け *ない* 形でBuildToolsパッケージを作る
+
+let package = Package(
+    name: "BuildTools",
+    platforms: [.macOS(.v10_13)],
+    dependencies: [
+        .package(url: "https://github.com/nicklockwood/SwiftFormat",
+                 exact: .init(0, 51, 5)),
+        .package(url: "https://github.com/realm/SwiftLint.git",
+                 exact: .init(0, 51, 0)),
+        .package(url: "https://github.com/mono0926/LicensePlist",
+                 exact: .init(3, 24, 9)),
+    ],
+    targets: []
+)
+
+2. File＞New＞Projectからxcworkspaceに紐付ける形でUpdateBuildToolsを作る
+3. UpdateBuildToolsのヘッダーファイルを削除し、Build Phasesのスクリプトで以下のスクリプトを追加する
+
+cd ../BuildTools
+echo "set SDKROOT"
+SDKROOT=(xcrun --sdk macosx --show-sdk-path)
+swift package update
+swift build -c release --product swiftformat
+swift build -c release --product swiftlint
+swift build -c release --product license-plist
+
+4. UpdateBuildToolsに向けてビルドするとBuildToolsで定義したパッケージが使える状態になるので、アプリ本体のprojectのBuild Phasesのスクリプトの参照先をBuildToolsのパッケージパスに変更する
+例）$SRCROOT/BuildTools/.build/release/swiftformat
+
+【対応手順3 - xcworkspaceの階層整理】
+xcworkspaceの中にあるcontents.xcworkspacedataを編集し、xcode上で参照したいファイルやパッケージなどの順番や参照を整理する
+BuildToolsのSwift Packageを単純にxcworkspaceに追加すると、アプリ本体で使用しているライブラリと依存関係の干渉を起こすため、以下のようにlocation指定してPackageではない形で参照する
+
+   <Group
+      location = "container:"
+      name = "BuildTools">
+      <FileRef
+         location = "group:BuildTools/Package.swift">
+      </FileRef>
+      <FileRef
+         location = "group:BuildTools/Package.resolved">
+      </FileRef>
+   </Group>
+
+【その他トラップ対応】
+- アプリのProjectのConfigurationにDebugが含まれている時にSwift PackageもDebugビルドされるので、QAなどのConfigurationでDebugビルドして欲しいものはDebugとつける
+- アプリ本体のターゲットに向けるとPreviewビルドは失敗するので、Swift Packageに向けてPreviewビルドする
+
+【参考文献】
+skyleapでの対応：https://engineering.dena.com/blog/2022/03/swift-package-centered-project-in-skyleap-ios/
+Swift PackageのConfigurationについて：https://www.sobyte.net/post/2022-10/spm-in-xcode/
+Swift Packageがstaticに紐付けされる件について：https://forums.swift.org/t/how-to-link-a-swift-package-as-dynamic/32062
+LicensePlistのSwift PM管理について：https://qiita.com/SNQ-2001/items/b2ea9cd49238db352f5c
+
+【細かいつまづきポイントメモ】
+- FirebaseCoreはいらない子（勝手に依存で入るから指定しない。指定してるとエラーになるし一回エラーになるとキャッシュで参照しちゃったりするからクリアする必要ある）
+- SwiftGenの修正は必要
+- entryポイントになる部分のコードは残す必要があるので、AppDelegateを分離する必要があった
+    - この際にpublic指定やら色々ゴニョゴニョした
+- import漏れで怒られたり、参照は消えてたけどファイルが削除されてないやつがエラーで怒られたりした
+- SwiftFormat、SwiftLint、LicensePListは別途対応が必要（まだやってない）
+- storyboard/xibは使うな。Module指定がクソ面倒くさい（これリストアップもできんしSwiftUI化してstoryboard/xibは削除する）
+- Image(画像名)指定してるところが空っぽになってるやんけ（後で対応する）
+- アプリアイコンとかは残さないとダメでござる
+- Preview Buildであることを示す環境変数はPrepare packagesの段階だとセットされてない
+    - prebuildCommandはpackageの依存解決のタイミングで実行されるため、ビルド設定が反映されてない
+    - buildCommandの場合は環境変数がセットされている
+- GoogleService-info.plist, Crashlyticsあたりの確認が必要
