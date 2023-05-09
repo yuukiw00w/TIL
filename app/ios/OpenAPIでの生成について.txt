@@ -1,0 +1,22 @@
+# コマンドの手順
+
+```sh
+# 当該repositoryにgit submoduleとしてyamlのあるプロジェクトをaddする
+git submodule add [server git repo] OpenAPI/server-repo
+
+# maven管理等は逆に煩雑でややこしくなったのでバージョン管理せずbrewでやる
+brew install openapi-generator
+
+# OpenAPI/server-repo配下にあるyamlファイルから生成するものを入れる箱を綺麗にする
+rm -rf ./OpenAPI/generated
+
+# openapi-generatorのコマンドのパラメータ色々みて必要なパラメータつけてgenerateする
+openapi-generator generate -i ./server-repo/.../openapi.yaml -g swift5 -o ./generated
+```
+
+# メモ
+場合によっては色々なパラメータで制御が必要
+
+1. 生成物の制御：--global-property=models,apis
+2. async/awaitでの生成：--additional-properties=responseAs=AsyncAwait
+3. Modelのカスタマイズ：hashableModels=false,useJsonEncodable=false
