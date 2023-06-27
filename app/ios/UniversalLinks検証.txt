@@ -1,0 +1,22 @@
+1. まずは公式ドキュメントをチェックする
+    a. [Allowing apps and websites to link to your content](https://developer.apple.com/documentation/xcode/allowing-apps-and-websites-to-link-to-your-content)
+    b. [Supporting universal links in your app](https://developer.apple.com/documentation/xcode/supporting-universal-links-in-your-app)
+
+2. 以下の手順を踏んで対応する
+    a. [apple-app-site-association](https://developer.apple.com/documentation/xcode/supporting-associated-domains)というjsonファイルを作成する
+    b. UniversalLinksで反応させたいドメインの配下にapple-app-site-associationファイルを置く
+    c. 必要なら）apple-app-site-associationファイルをSSL証明書で署名しておく（ドメインがhttps対応されてる場合は不要）
+    d. 必要なら）[appleのCDNからアクセスできるようにfirewall設定などを修正する](https://support.apple.com/en-sg/HT210060) → ただし、CDNからのアクセスはドキュメントに記載のhost以外からもくる
+    e. アプリ側でCapabilitiesに必要な項目を追加し、Universal Linksのハンドリングコードを追加する
+    f. 必要なら）Capabilitiesにてalternate mode指定も追加しておく
+        - https://developer.apple.com/documentation/xcode/supporting-associated-domains の Add the associated domains entitlement to your appを参照のこと
+
+3. 検証
+    a. CDNからアクセスできているかどうかは以下の手段で検証する
+        (1) https://branch.io/resources/aasa-validator/
+        (2) https://app-site-association.cdn-apple.com/a/v1/{yourdomain}
+    b. developerモードでの検証には以下の対応が必要
+        (1) Capabilitiesにmode指定を追加
+        (2) 端末が指定のネットワークにアクセスできるようにする（VPN設定など）
+        (3) 端末のdeveloperモードをonにする
+        (4) 端末のdeveloperのAssociated Domains…をonにする
