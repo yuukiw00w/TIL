@@ -1,0 +1,7 @@
+コンパイラフラグは
+swiftc --help-hidden
+swiftc -frontend --help-hidden
+で一覧が確認できる。
+また、Xcode上のものは
+https://developer.apple.com/documentation/xcode/build-settings-reference
+から確認できる。
