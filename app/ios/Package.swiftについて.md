@@ -1,6 +1,6 @@
 普通にNewからPackageを選択して追加して、そこにコードを移動して諸々Package.swiftを設定したらXcodeのTARGETS > Generalからリンクしてビルドする
 
-
+```swift
 let package = Package(
     // Xcodeの
     // frameworks, Libraries, and Embedded Contentから
@@ -30,5 +30,6 @@ let package = Package(
             dependencies: []),
     ]
 )
+```
 
 
