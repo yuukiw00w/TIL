@@ -10,8 +10,8 @@ let package = Package(
     name: "AppLibrary",
     platforms: [.iOS(.v14)],
     products: [
-        // 実際にリンクするModuleはここにリストしたものになる
-        // AppLibrary配下にAppModuleが表示されていて、それをリンクする
+        // swiftmoduleのModuleをリンクするときに、実際にリンクするModuleはここにリストしたものになる
+        // AppLibrary配下にAppModuleが表示されていて、それをリンクする（AppLibraryを開くとAppModuleがあり、それを選ぶ）
         .library(
             name: "AppModule",
             targets: ["Common", "Features"]),
